@@ -1,20 +1,17 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 flask = "*"
 sqlalchemy = "*"
-"psycopg2-binary" = "*"
+psycopg2-binary = "*"
 simplejson = "*"
-
+redis = "*"
+flask-cors = "*"
 
 [dev-packages]
 
-
 [scripts]
-start = 'flask run'
+start = "flask run"
