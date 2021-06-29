@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import os, time, sqlalchemy
 from redis import Redis
 
-# should be stored in ENVIRONMENT VARIABLES
-REDIS_HOSTNAME="redis-11660.c275.us-east-1-4.ec2.cloud.redislabs.com"
-REDIS_PORT="11660"
-REDIS_PASSWORD="pH1u49N2shC4M9w5ICPsG0SPA4gic6tQ"
+redis = Redis(host=os.getenv('REDIS_HOSTNAME'), port=os.getenv('REDIS_PORT'), password=os.getenv('REDIS_PASSWORD'))
 
-redis = Redis(host=REDIS_HOSTNAME, port=REDIS_PORT, password=REDIS_PASSWORD)
-
-import os, time, sqlalchemy
 from functools import update_wrapper
 from flask import request, g
 from flask import Flask, jsonify
