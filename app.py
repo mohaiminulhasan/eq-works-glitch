@@ -6,7 +6,7 @@ from redis import Redis
 redis = Redis(host=os.getenv('REDIS_HOSTNAME'), port=os.getenv('REDIS_PORT'), password=os.getenv('REDIS_PASSWORD'))
 
 from functools import update_wrapper
-from flask import request, g
+from flask import json, request, g
 from flask import Flask, jsonify
 from flask_cors import CORS
 
@@ -128,7 +128,98 @@ def poi():
         FROM public.poi;
     ''')
 
+@app.route('/stats/geo')
+@ratelimit(limit=10, per=20 * 1)
+def geostats():
+    return geostats_helper('''
+        SELECT  public.hourly_stats.date, 
+                public.hourly_stats.hour, 
+                public.hourly_stats.impressions, 
+                public.hourly_stats.clicks, 
+                public.hourly_stats.revenue,
+                public.poi.lon,
+                public.poi.lat
+        FROM public.hourly_stats
+        JOIN public.poi ON public.hourly_stats.poi_id = public.poi.poi_id
+        ORDER BY date, hour;
+    ''')
+
+@app.route('/events/geo')
+@ratelimit(limit=10, per=20 * 1)
+def geoevents():
+    return geoevents_helper('''
+        SELECT  public.hourly_events.date, 
+                public.hourly_events.hour, 
+                public.hourly_events.events,
+                public.poi.lon,
+                public.poi.lat
+        FROM public.hourly_events
+        JOIN public.poi ON public.hourly_events.poi_id = public.poi.poi_id
+        ORDER BY date, hour
+        LIMIT 168;
+    ''')
+
 def query_helper(query):
     with engine.connect() as conn:
         result = conn.execute(query).fetchall()
         return jsonify([dict(row.items()) for row in result])
+
+def geostats_helper(query):
+    with engine.connect() as conn:
+        result = conn.execute(query).fetchall()
+
+        features = []
+        for row in result:
+            obj = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [row[-2], row[-1]]
+                },
+                "properties": {
+                    "date": row[0],
+                    "hour": row[1],
+                    "impressions": row[2],
+                    "clicks": row[3],
+                    "revenue": row[4]
+                }
+            }
+
+            features.append(obj)
+
+        output = {
+            "type": "FeatureCollection",
+            "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+            "features": features
+        }
+
+        return jsonify(output)
+
+def geoevents_helper(query):
+    with engine.connect() as conn:
+        result = conn.execute(query).fetchall()
+
+        features = []
+        for row in result:
+            obj = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [row[-2], row[-1]]
+                },
+                "properties": {
+                    "date": row[0],
+                    "hour": row[1],
+                    "events": row[2]
+                }
+            }
+
+            features.append(obj)
+
+        output = {
+            "type": "FeatureCollection",
+            "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+            "features": features
+        }
+
+        return jsonify(output)
